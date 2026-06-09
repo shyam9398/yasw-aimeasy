@@ -3017,3 +3017,305 @@ body,
     grid-template-columns: 1fr;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────── */
+/*  MOBILE RESPONSIVE OVERRIDES (max-width: 1024px & 768px)             */
+/* ──────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  /* Dynamic admin, sub-admin, and creator grids */
+  .cr-subj-grid, .adm-subj-grid, .adm-unit-grid {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Landing page tweaks */
+  .landing-header {
+    padding: 1rem 1.5rem !important;
+  }
+  .landing-hero {
+    padding: 1.5rem 1rem 2.5rem 1rem !important;
+  }
+  .landing-title {
+    font-size: 2.2rem !important;
+  }
+  .role-cards {
+    gap: 12px !important;
+    width: 100%;
+  }
+  .role-card {
+    padding: 1.2rem 1rem !important;
+  }
+  /* Stats Grid (2x2 display to avoid huge vertical stretch) */
+  .stats-row {
+    display: grid !important;
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 1.2rem !important;
+    margin-top: 2rem !important;
+    width: 100%;
+  }
+  .landing-footer {
+    gap: 1.2rem !important;
+    padding: 1.8rem 1.2rem !important;
+  }
+
+  /* Public Information screens: About, Contact, Privacy */
+  .info-page {
+    padding: 1.5rem 1rem !important;
+  }
+  .info-grid, .contact-panel, .info-detail-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.85rem !important;
+  }
+
+  /* Topbar 2-row layout with search bar and notification bell */
+  .topbar {
+    position: relative !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    height: auto !important;
+    padding: 0.75rem 1rem !important;
+    gap: 10px !important;
+  }
+  .topbar-left {
+    display: flex !important;
+    align-items: center !important;
+    width: calc(100% - 40px) !important;
+  }
+  .topbar-right {
+    display: flex !important;
+    width: 100% !important;
+    justify-content: stretch !important;
+  }
+  .search-bar {
+    display: flex !important;
+    flex: 1 !important;
+    margin-right: 0 !important;
+  }
+  .notif-btn {
+    position: absolute !important;
+    top: 1rem !important;
+    right: 1rem !important;
+    font-size: 1.3rem !important;
+  }
+
+  /* Dashboard improvements */
+  .dash-grid {
+    grid-template-columns: 1fr !important;
+    gap: 0.8rem !important;
+  }
+  .metric-card {
+    display: flex !important;
+    align-items: center !important;
+    text-align: left !important;
+    padding: 0.85rem 1.2rem !important;
+    gap: 14px !important;
+  }
+  .metric-icon {
+    font-size: 1.8rem !important;
+    margin-bottom: 0 !important;
+  }
+  .metric-trend {
+    margin-top: 0 !important;
+    margin-left: auto !important;
+  }
+  .streak-card {
+    overflow-x: auto !important;
+  }
+  .heatmap {
+    min-width: 380px !important;
+  }
+  .achievement-grid {
+    grid-template-columns: 1fr 1fr !important; /* Keep compact 2-column view */
+  }
+
+  /* Subjects & Units */
+  .subject-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* Premium 2-column view */
+    gap: 0.75rem !important;
+  }
+  .subject-card-header {
+    padding: 0.9rem !important;
+  }
+  .subject-icon {
+    font-size: 1.4rem !important;
+  }
+  .subject-card-body {
+    padding: 0.8rem 0.9rem !important;
+  }
+  .units-grid {
+    grid-template-columns: repeat(2, 1fr) !important; /* Compact 2-column layout */
+    gap: 0.8rem !important;
+  }
+  .unit-card {
+    padding: 1rem !important;
+  }
+
+  /* Videos layout and sticky roadmap fixes */
+  .videos-layout {
+    flex-direction: column !important;
+    gap: 1rem !important;
+  }
+  .video-sidebar, .video-sidebar.collapsed {
+    position: relative !important;
+    top: auto !important;
+    max-height: none !important;
+    width: 100% !important;
+    margin-right: 0 !important;
+  }
+  .video-sidebar.collapsed .video-sidebar-body {
+    display: block !important; /* Keep roadmap open inside column stack */
+  }
+
+  /* Admin/Creator dashboard inline display grid override */
+  #admin-content div[style*="grid-template-columns:1fr 1fr"],
+  #cr-content div[style*="grid-template-columns:1fr 1fr"],
+  #sa-content div[style*="grid-template-columns:1fr 1fr"],
+  #admin-content div[style*="grid-template-columns: 1fr 1fr"],
+  #cr-content div[style*="grid-template-columns: 1fr 1fr"],
+  #sa-content div[style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+  
+  /* Sidebar dimming backdrop visibility fix */
+  .sidebar-backdrop.open, .admin-sidebar-backdrop.open {
+    display: block !important;
+  }
+
+  /* Content Creator horizontal scrollable tabs */
+  .v11-tabs {
+    overflow-x: auto !important;
+    flex-wrap: nowrap !important;
+    padding-bottom: 0.25rem !important;
+    -webkit-overflow-scrolling: touch !important;
+  }
+  .v11-tab {
+    flex: 0 0 auto !important;
+    white-space: nowrap !important;
+  }
+}
+
+@media (max-width: 600px) {
+  /* Subject cards fall back to 1 column on extra small phones */
+  .subject-grid, .units-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* GPA Calculator Row formatting */
+  #calc-table thead {
+    display: none !important;
+  }
+  #calc-tbody tr {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    align-items: center !important;
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius-md) !important;
+    padding: 0.6rem !important;
+    margin-bottom: 0.8rem !important;
+    gap: 8px !important;
+  }
+  #calc-tbody td {
+    padding: 2px !important;
+    border: none !important;
+  }
+  #calc-tbody td:nth-child(1) {
+    flex: 1 1 100% !important; /* Subject name full-width */
+  }
+  #calc-tbody td:nth-child(1) input {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+  #calc-tbody td:nth-child(2) {
+    flex: 1 1 calc(33% - 8px) !important;
+  }
+  #calc-tbody td:nth-child(2) input {
+    width: 100% !important;
+  }
+  #calc-tbody td:nth-child(3) {
+    flex: 1 1 calc(33% - 8px) !important;
+  }
+  #calc-tbody td:nth-child(3) select {
+    width: 100% !important;
+  }
+  #calc-tbody td:nth-child(4) {
+    flex: 0 0 40px !important;
+    text-align: center !important;
+  }
+  #calc-tbody td:nth-child(5) {
+    flex: 0 0 30px !important;
+    text-align: right !important;
+  }
+
+  /* Compact buttons for video actions */
+  .video-controls .btn {
+    padding: 8px 12px !important;
+    font-size: 0.8rem !important;
+    min-width: 0 !important;
+    flex: 1 !important;
+    justify-content: center !important;
+  }
+
+  /* Video suggestion formatting */
+  .video-suggest-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+  .video-suggest-input {
+    width: 100% !important;
+  }
+  .video-suggest-row button {
+    width: 100% !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Landing page grids */
+  .stats-row {
+    grid-template-columns: 1fr !important; /* Single column on tiny screens */
+  }
+
+  /* Subjects topbar select switcher */
+  .subjects-topbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .subjects-topbar select {
+    width: 100% !important;
+  }
+
+  /* GPA Calculator Results grid (SGPA and CGPA cards side-by-side) */
+  .calc-results {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr !important;
+    gap: 0.8rem !important;
+  }
+  .calc-results > .result-card {
+    grid-column: span 2 !important; /* default span full width */
+  }
+  .calc-results > .result-card:nth-child(1),
+  .calc-results > .result-card:nth-child(2) {
+    grid-column: span 1 !important; /* SGPA and CGPA cards side-by-side */
+  }
+
+  /* Sent notifications history list rows stack */
+  #admin-content div[style*="display:flex; justify-content:space-between; align-items:flex-start"],
+  #admin-content div[style*="display: flex; justify-content: space-between; align-items: flex-start"] {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  #admin-content div[style*="display:flex; justify-content:space-between; align-items:flex-start"] button,
+  #admin-content div[style*="display: flex; justify-content: space-between; align-items: flex-start"] button {
+    align-self: flex-end !important;
+  }
+
+  /* Profile setup card padding */
+  #screen-setting-up-profile .google-auth-card {
+    padding: 2rem 1.2rem !important;
+  }
+}
