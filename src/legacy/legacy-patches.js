@@ -656,7 +656,7 @@ function v11AdminSubjectDotMenu(btn, id, name) {
   event.stopPropagation();
 }
 
-function v11AdminCreateSubject() {
+async function v11AdminCreateSubject() {
   const branch = document.getElementById('v11-adm-branch')?.value;
   const year = document.getElementById('v11-adm-year')?.value;
   const sem = document.getElementById('v11-adm-sem')?.value;
@@ -666,8 +666,36 @@ function v11AdminCreateSubject() {
   const name = document.getElementById('v11-adm-subname')?.value.trim();
   const code = document.getElementById('v11-adm-subcode')?.value.trim();
   if (!branch || !sem || !reg || !uni || !name) { showToast('Fill all required fields', 'red'); return; }
-  const subjects = JSON.parse(localStorage.getItem('edusync_custom_subjects') || '[]');
+
   const newSubj = { id: Date.now(), branch, year, sem, reg, uni, credits, name, code, createdBy: 'admin' };
+
+  // Sync to DB
+  const supabase = window.__AIMEASY_SUPABASE__;
+  if (supabase) {
+    try {
+      const { data, error } = await supabase.from('subjects').insert({
+        name: name,
+        code: code,
+        branch: branch,
+        regulation_code: reg,
+        semester: sem,
+        university_name: uni,
+        created_by: 'admin'
+      }).select().single();
+      if (error) {
+        showToast('Failed to create subject in DB: ' + error.message, 'red');
+        return;
+      }
+      if (data) {
+        newSubj.dbSubjectId = data.id;
+      }
+    } catch (e) {
+      showToast('DB error: ' + e.message, 'red');
+      return;
+    }
+  }
+
+  const subjects = JSON.parse(localStorage.getItem('edusync_custom_subjects') || '[]');
   subjects.push(newSubj);
   localStorage.setItem('edusync_custom_subjects', JSON.stringify(subjects));
   showToast('✅ Subject created! Visible to students, sub admins, and creators.', 'green');
@@ -736,20 +764,54 @@ function v11AdminEditSubject(id) {
   </div>`;
 }
 
-function v11AdminSaveEditSubject(id) {
+async function v11AdminSaveEditSubject(id) {
   const subjects = JSON.parse(localStorage.getItem('edusync_custom_subjects') || '[]');
   const idx = subjects.findIndex(x => x.id === id);
   if (idx === -1) return;
+
+  const nextName = document.getElementById('v11-edit-name')?.value.trim() || subjects[idx].name;
+  const nextCode = document.getElementById('v11-edit-code')?.value.trim() || subjects[idx].code;
+  const nextBranch = document.getElementById('v11-edit-branch')?.value || subjects[idx].branch;
+  const nextSem = document.getElementById('v11-edit-sem')?.value || subjects[idx].sem;
+  const nextReg = document.getElementById('v11-edit-reg')?.value || subjects[idx].reg;
+  const nextUni = document.getElementById('v11-edit-uni')?.value || subjects[idx].uni;
+  const nextYear = document.getElementById('v11-edit-year')?.value || subjects[idx].year;
+  const nextCredits = document.getElementById('v11-edit-credits')?.value || subjects[idx].credits;
+
+  const dbSubjectId = subjects[idx].dbSubjectId;
+
+  // Sync to DB
+  const supabase = window.__AIMEASY_SUPABASE__;
+  if (supabase && dbSubjectId) {
+    try {
+      const { error } = await supabase.from('subjects').update({
+        name: nextName,
+        code: nextCode,
+        branch: nextBranch,
+        regulation_code: nextReg,
+        semester: nextSem,
+        university_name: nextUni,
+      }).eq('id', dbSubjectId);
+      if (error) {
+        showToast('Failed to update subject in DB: ' + error.message, 'red');
+        return;
+      }
+    } catch (e) {
+      showToast('DB error: ' + e.message, 'red');
+      return;
+    }
+  }
+
   subjects[idx] = {
     ...subjects[idx],
-    name: document.getElementById('v11-edit-name')?.value.trim() || subjects[idx].name,
-    code: document.getElementById('v11-edit-code')?.value.trim() || subjects[idx].code,
-    branch: document.getElementById('v11-edit-branch')?.value || subjects[idx].branch,
-    sem: document.getElementById('v11-edit-sem')?.value || subjects[idx].sem,
-    reg: document.getElementById('v11-edit-reg')?.value || subjects[idx].reg,
-    uni: document.getElementById('v11-edit-uni')?.value || subjects[idx].uni,
-    year: document.getElementById('v11-edit-year')?.value || subjects[idx].year,
-    credits: document.getElementById('v11-edit-credits')?.value || subjects[idx].credits,
+    name: nextName,
+    code: nextCode,
+    branch: nextBranch,
+    sem: nextSem,
+    reg: nextReg,
+    uni: nextUni,
+    year: nextYear,
+    credits: nextCredits,
   };
   localStorage.setItem('edusync_custom_subjects', JSON.stringify(subjects));
   showToast('✅ Subject updated! Changes reflected everywhere.', 'green');
@@ -762,11 +824,22 @@ function v11AdminDeleteSubject(id, name) {
     `Delete subject "<strong>${name}</strong>"?<br><br>This will permanently remove all its units, topics, videos, notes, PYQs, and important questions.`,
     () => {
       const subjects = JSON.parse(localStorage.getItem('edusync_custom_subjects') || '[]');
+      const subj = subjects.find(s => s.id === id);
+
+      // Sync to DB
+      const supabase = window.__AIMEASY_SUPABASE__;
+      if (supabase && subj?.dbSubjectId) {
+        supabase.from('subjects').delete().eq('id', subj.dbSubjectId).then(({ error }) => {
+          if (error) {
+            showToast('Failed to delete subject from DB: ' + error.message, 'red');
+          }
+        });
+      }
+
       localStorage.setItem('edusync_custom_subjects', JSON.stringify(subjects.filter(s => s.id !== id)));
       // Remove all related content
       localStorage.removeItem('edusync_units_' + id);
       // Remove related content (notes/pyqs/iqs/videos that belong to this subject by name)
-      const subj = subjects.find(s => s.id === id);
       if (subj) {
         const n = subj.name;
         ['edusync_admin_notes','edusync_admin_pyqs','edusync_admin_iqs','edusync_admin_videos'].forEach(key => {

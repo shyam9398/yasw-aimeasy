@@ -230,7 +230,7 @@ function collectSubjectPayload(existingId) {
 export function installAdminSubjectCrud() {
   if (window.__aimeasyAdminSubjectCrudInstalled) return;
 
-  window.adminSubjectCreate = function adminSubjectCreate() {
+  window.adminSubjectCreate = async function adminSubjectCreate() {
     const subjects = readSubjects();
     const payload = collectSubjectPayload();
     if (!payload) return;
@@ -245,6 +245,33 @@ export function installAdminSubjectCrud() {
     if (duplicate) {
       showToast('A subject with this code already exists for that branch and semester', 'red');
       return;
+    }
+
+    // Sync to DB
+    const supabase = window.__AIMEASY_SUPABASE__;
+    if (supabase) {
+      try {
+        const { data, error } = await supabase.from('subjects').insert({
+          name: payload.name,
+          code: payload.code,
+          branch: payload.branch,
+          regulation_code: payload.reg,
+          semester: payload.sem,
+          university_name: payload.uni,
+          created_by: 'admin'
+        }).select().single();
+
+        if (error) {
+          showToast('Failed to save subject to DB: ' + error.message, 'red');
+          return;
+        }
+        if (data) {
+          payload.dbSubjectId = data.id;
+        }
+      } catch (e) {
+        showToast('DB error: ' + e.message, 'red');
+        return;
+      }
     }
 
     subjects.push(payload);
@@ -263,7 +290,7 @@ export function installAdminSubjectCrud() {
     renderAdminSubjectCrud(subject);
   };
 
-  window.adminSubjectUpdate = function adminSubjectUpdate() {
+  window.adminSubjectUpdate = async function adminSubjectUpdate() {
     const id = getFormValue('admin-subject-id');
     const payload = collectSubjectPayload(Number(id));
     if (!payload) return;
@@ -277,7 +304,32 @@ export function installAdminSubjectCrud() {
     }
 
     const oldName = subjects[index].name;
-    subjects[index] = { ...subjects[index], ...payload };
+    const dbSubjectId = subjects[index].dbSubjectId;
+
+    // Sync to DB
+    const supabase = window.__AIMEASY_SUPABASE__;
+    if (supabase && dbSubjectId) {
+      try {
+        const { error } = await supabase.from('subjects').update({
+          name: payload.name,
+          code: payload.code,
+          branch: payload.branch,
+          regulation_code: payload.reg,
+          semester: payload.sem,
+          university_name: payload.uni,
+        }).eq('id', dbSubjectId);
+
+        if (error) {
+          showToast('Failed to update subject in DB: ' + error.message, 'red');
+          return;
+        }
+      } catch (e) {
+        showToast('DB error: ' + e.message, 'red');
+        return;
+      }
+    }
+
+    subjects[index] = { ...subjects[index], ...payload, dbSubjectId };
     saveSubjects(subjects);
 
     if (oldName !== payload.name) {
@@ -298,7 +350,7 @@ export function installAdminSubjectCrud() {
     renderAdminSubjectCrud();
   };
 
-  window.adminSubjectDelete = function adminSubjectDelete(id) {
+  window.adminSubjectDelete = async function adminSubjectDelete(id) {
     const subject = findSubject(id);
     if (!subject) {
       showToast('Subject not found', 'red');
@@ -306,6 +358,21 @@ export function installAdminSubjectCrud() {
     }
 
     if (!confirm(`Delete "${subject.name}" and its units/content links?`)) return;
+
+    // Sync to DB
+    const supabase = window.__AIMEASY_SUPABASE__;
+    if (supabase && subject.dbSubjectId) {
+      try {
+        const { error } = await supabase.from('subjects').delete().eq('id', subject.dbSubjectId);
+        if (error) {
+          showToast('Failed to delete subject from DB: ' + error.message, 'red');
+          return;
+        }
+      } catch (e) {
+        showToast('DB error: ' + e.message, 'red');
+        return;
+      }
+    }
 
     saveSubjects(readSubjects().filter((item) => String(item.id) !== String(id)));
     localStorage.removeItem(`edusync_units_${id}`);
