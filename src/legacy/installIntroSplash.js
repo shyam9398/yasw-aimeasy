@@ -128,7 +128,7 @@ export function installIntroSplash() {
     console.log('[INTRO] Video Ended');
     const route = window.__aimeasyRouteAfterIntro || currentRoute();
     window.__aimeasyRouteAfterIntro = '';
-    if (!route || route === '/intro' || route === '/landing') {
+    if (!route || route === '/landing' || route === '/landing') {
       window.history.replaceState({ aimeasyPath: '/landing', aimeasyIndex: 1 }, '', '#/landing');
       activateRoleScreen();
       return;
@@ -180,7 +180,7 @@ export function installIntroSplash() {
 
   function loadVideoSource(introVideo) {
     try {
-      const src = '/intro.mp4';
+      const src = '/';
       const source = introVideo.querySelector('source');
       if (source) source.src = src;
       introVideo.src = src;

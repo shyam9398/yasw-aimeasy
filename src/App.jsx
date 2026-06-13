@@ -80,7 +80,7 @@ function AuthenticatedLegacyApp() {
 
     window.__AIMEASY_SUPABASE__ = supabase;
     installBackButtonFixes();
-    //installBrowserNavigation();
+    installBrowserNavigation();
     const cleanupLegacyScripts = runLegacyScripts([legacyScript, legacyPatchScript, aimeasyFixScript]);
     installCriticalFixes();
     if (session?.user && profile) {

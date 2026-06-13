@@ -17,7 +17,8 @@ import {
   upsertProfileFromLegacy,
 } from '../services/auth/profileService.js';
 import { isOAuthCallbackUrl, routeAfterAuth } from '../services/auth/postAuthRouter.js';
-import { ROLE, applyDashboardRedirect, normalizeRole } from '../services/auth/roleRedirectService.js';
+import { ROLE, applyDashboardRedirect, normalizeRole, roleCanAccess, screenForRole } from '../services/auth/roleRedirectService.js';
+import { getPageByScreenId } from '../pages/pageRegistry.js';
 import { setCurrentBranch } from '../services/auth/branchContext.js';
 import { createContentItem, deleteContentItem, listContentItems, normalizeContentType, updateContentItem } from '../services/content/contentRepository.js';
 import { fetchCurriculumStats, fetchUnitRoadmap, saveLinkedContentItem, saveUnitRoadmap } from '../services/curriculum/curriculumRepository.js';
@@ -256,6 +257,9 @@ export function installCriticalFixes() {
       if (typeof window.hydrateLegacyState === 'function') {
         console.log('[AUTH] Hydrating legacy state for authenticated user', data.session.user.id);
         await window.hydrateLegacyState();
+        if (typeof window.aimeasyFetchSubjectsAndUnits === 'function') {
+          await window.aimeasyFetchSubjectsAndUnits();
+        }
       }
 
       const portal = getStoredLoginPortal();
@@ -407,6 +411,21 @@ export function installCriticalFixes() {
         });
       }
  
+      // Enforce role-based authorization guard
+      const page = getPageByScreenId(id);
+      if (page && page.role && page.role !== 'public') {
+        const currentUserRole = normalizeRole(window.APP?.user?.role || window.APP?.role);
+        if (!currentUserRole || !roleCanAccess(currentUserRole, page.role)) {
+          console.warn(`[SECURITY] Access denied to screen '${id}' for role '${currentUserRole}'`);
+          if (currentUserRole) {
+            applyDashboardRedirect(window.APP?.user);
+          } else {
+            origShowScreenForAuthGuard.call(this, 'screen-landing');
+          }
+          return undefined;
+        }
+      }
+
       const result = origShowScreenForAuthGuard.call(this, id, role);
       if (id === 'screen-landing') {
         window.setTimeout(() => window.updateLandingStats?.(), 0);
@@ -923,4 +942,120 @@ if (!/^[0-9]{10}$/.test(phone)) {
 
   // Auth state listener → student router only
   window.syncGoogleAuthScreen = syncGoogleAuthScreen;
+
+  window.aimeasyFetchSubjectsAndUnits = async function aimeasyFetchSubjectsAndUnits(semester) {
+    const supabase = window.__AIMEASY_SUPABASE__;
+    if (!supabase) return;
+    const user = window.APP?.user || {};
+    const sem = semester || user.semester || '3-1';
+    const branch = user.branch || '';
+    const regulation = user.regulation || '';
+
+    try {
+      let q = supabase
+        .from('subjects')
+        .select('*')
+        .eq('semester', sem);
+      if (branch) q = q.eq('branch', branch);
+      if (regulation) q = q.eq('regulation_code', regulation);
+
+      const { data: dbSubjects, error: subjectsError } = await q;
+      if (subjectsError) {
+        console.warn('Failed to load subjects:', subjectsError.message);
+        return;
+      }
+
+      if (!dbSubjects || !dbSubjects.length) {
+        localStorage.setItem('edusync_custom_subjects', JSON.stringify([]));
+        return;
+      }
+
+      const customSubjects = dbSubjects.map(s => ({
+        id: s.id,
+        dbSubjectId: s.id,
+        name: s.name,
+        code: s.code || '',
+        uni: s.university_name || '',
+        reg: s.regulation_code || '',
+        branch: s.branch || '',
+        year: s.semester ? s.semester.split('-')[0] : '1',
+        sem: s.semester || '1-1',
+        credits: s.credits || 3,
+        icon: '📖'
+      }));
+
+      localStorage.setItem('edusync_custom_subjects', JSON.stringify(customSubjects));
+
+      const subjectIds = dbSubjects.map(s => s.id);
+      const { data: dbUnits, error: unitsError } = await supabase
+        .from('units')
+        .select('*')
+        .in('subject_id', subjectIds)
+        .order('sort_order', { ascending: true });
+
+      if (unitsError) {
+        console.warn('Failed to load units:', unitsError.message);
+        return;
+      }
+
+      const { data: dbTopics, error: topicsError } = await supabase
+        .from('topics')
+        .select('*')
+        .in('subject_id', subjectIds)
+        .order('display_order', { ascending: true });
+
+      if (topicsError) {
+        console.warn('Failed to load topics:', topicsError.message);
+      }
+
+      const topicsMap = {};
+      if (dbTopics) {
+        dbTopics.forEach(t => {
+          if (!topicsMap[t.unit_id]) {
+            topicsMap[t.unit_id] = [];
+          }
+          topicsMap[t.unit_id].push(t.topic_name);
+        });
+      }
+
+      if (dbUnits) {
+        subjectIds.forEach(subId => {
+          const subUnits = dbUnits.filter(u => u.subject_id === subId);
+          const mappedUnits = subUnits.map(u => ({
+            id: u.sort_order,
+            dbUnitId: u.id,
+            name: u.title || `Unit ${u.sort_order}`,
+            topics: topicsMap[u.id] || []
+          }));
+          localStorage.setItem('edusync_units_' + subId, JSON.stringify(mappedUnits));
+          localStorage.setItem('edusync_units_custom_' + subId, JSON.stringify(mappedUnits));
+        });
+      }
+    } catch (e) {
+      console.warn('aimeasyFetchSubjectsAndUnits failed:', e);
+    }
+  };
+
+  const originalRenderSubjects = window.renderSubjects;
+  if (typeof originalRenderSubjects === 'function') {
+    let isFetchingSubjects = false;
+    window.renderSubjects = function patchedRenderSubjects(sem) {
+      const user = window.APP?.user || {};
+      const semester = sem || user.semester || '3-1';
+      
+      originalRenderSubjects.call(this, semester);
+      
+      const currentRole = normalizeRole(window.APP?.role || window.APP?.user?.role);
+      if (currentRole === ROLE.STUDENT && !isFetchingSubjects && window.__AIMEASY_SUPABASE__) {
+        isFetchingSubjects = true;
+        window.aimeasyFetchSubjectsAndUnits(semester).then(() => {
+          originalRenderSubjects.call(this, semester);
+          isFetchingSubjects = false;
+        }).catch((err) => {
+          console.warn('Background subjects fetch error:', err);
+          isFetchingSubjects = false;
+        });
+      }
+    };
+  }
 }

@@ -202,12 +202,15 @@ function routeExists(path) {
     /^\/admin(\/|$)/.test(path) ||
     path.startsWith('/creator/') ||
     path.startsWith('/subadmin/') ||
-    path.startsWith('/admin/') || 
+    path.startsWith('/admin/') ||
     Boolean(getPageByPath(path))
   );
 }
 
 async function applyRoute(path) {
+  if (typeof window.stopVideoPlayer === 'function') {
+    window.stopVideoPlayer();
+  }
   path = window.aiiensNormalizeAdminRoute?.(path) || path;
   console.log('[ROUTE] Route Requested', {
     requestedRoute: path,
@@ -246,6 +249,12 @@ async function applyRoute(path) {
   const [, childPath, subjectId, unitId] = path.split('/').filter(Boolean);
   const normalizedMainPath = normalizedMainPathFor(path);
   const page = pageForRoute(normalizedMainPath) || getPageByPath(HOME_PATH);
+
+  if (page.screenId && !document.getElementById(page.screenId)) {
+    console.warn(`[ROUTER] Defensive Guard: Target screen '${page.screenId}' not found in DOM.`);
+    return;
+  }
+
   const hasSession = (typeof APP !== 'undefined' && (APP.session || APP.adminType));
   if (hasSession && isOnboardingLocked() && path === HOME_PATH) {
     console.log('[ROUTE] Route Blocked', { requestedRoute: path, reason: 'onboarding-route-lock' });
@@ -255,27 +264,27 @@ async function applyRoute(path) {
   if (!hasSession && isOnboardingPath && (isOnboardingLocked() || isAuthBootstrapLocked())) {
     console.log('[ROUTE] Route Allowed', { path, reason: 'onboarding' });
   } else
-  if (!hasSession && page.role !== 'public') {
-    if (isAuthBootstrapLocked()) {
-      console.log('[ROUTE] Route pending', { requestedRoute: path, reason: 'session-restore-in-flight' });
+    if (!hasSession && page.role !== 'public') {
+      if (isAuthBootstrapLocked()) {
+        console.log('[ROUTE] Route pending', { requestedRoute: path, reason: 'session-restore-in-flight' });
+        return;
+      }
+      if ((isOnboardingRoute(normalizedMainPath) || isDashboardRoute(path)) && window.__AIMEASY_SUPABASE__) {
+        console.log('[AUTH] Session restore requested before protected routing', { route: path });
+        await requestAuthSync({ reason: `protected-route-restore:${path}` });
+        return;
+      }
+      console.log('[ROUTE] Route Blocked', { requestedRoute: path, reason: 'missing-session' });
+      suppressRouteUpdate = true;
+      if (typeof window.showScreen === 'function') {
+        window.showScreen(getPageByPath(HOME_PATH).screenId);
+      } else {
+        showOnlyScreen(getPageByPath(HOME_PATH).screenId);
+      }
+      replaceRoute(HOME_PATH);
+      suppressRouteUpdate = false;
       return;
     }
-    if ((isOnboardingRoute(normalizedMainPath) || isDashboardRoute(path)) && window.__AIMEASY_SUPABASE__) {
-      console.log('[AUTH] Session restore requested before protected routing', { route: path });
-      await requestAuthSync({ reason: `protected-route-restore:${path}` });
-      return;
-    }
-    console.log('[ROUTE] Route Blocked', { requestedRoute: path, reason: 'missing-session' });
-    suppressRouteUpdate = true;
-    if (typeof window.showScreen === 'function') {
-      window.showScreen(getPageByPath(HOME_PATH).screenId);
-    } else {
-      showOnlyScreen(getPageByPath(HOME_PATH).screenId);
-    }
-    replaceRoute(HOME_PATH);
-    suppressRouteUpdate = false;
-    return;
-  }
 
   if (hasSession && page.role !== 'public' && !roleCanAccess(currentAuthRole(), page.role)) {
     console.log('[ROUTE] Route Blocked', {
@@ -363,13 +372,13 @@ function patchLegacyNavigators() {
   const originalNavigateTo = window.navigateTo;
   if (typeof originalNavigateTo === 'function') {
     window.navigateTo = function routedNavigateTo(pageName) {
-        console.log('[PATCHED NAVIGATE]', pageName);
-        console.log('[SUPPRESS]', suppressRouteUpdate);
+      console.log('[PATCHED NAVIGATE]', pageName);
+      console.log('[SUPPRESS]', suppressRouteUpdate);
       const result = originalNavigateTo.call(this, pageName);
 
       if (!suppressRouteUpdate && STUDENT_INNER_PAGES.has(pageName)) {
         pushRoute(`/student/${pageName}`);
-         console.log('[URL UPDATED]', `/student/${pageName}`);
+        console.log('[URL UPDATED]', `/student/${pageName}`);
       }
 
       return result;
@@ -527,7 +536,7 @@ export async function startBrowserNavigation() {
   if (hash === HOME_PATH) {
     sessionStorage.removeItem('aimeasy:intro_suppressed_for_auth');
   }
-  if (hash !== HOME_PATH && hash !== '/intro') {
+  if (hash !== HOME_PATH && hash !== '/landing') {
     markIntroPlayedThisTab();
   }
   const firstVisitIntro = !hasIntroPlayedThisTab();

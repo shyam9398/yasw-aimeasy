@@ -1,5 +1,24 @@
 // AIIENS Edu targeted fixes: auth, regulations, counters, navigation, menus, and placeholders.
 (function installAIIENSEduFixes() {
+  console.log('[aimeasy-fixes] IIFE loaded and running');
+  console.log('[aimeasy-fixes] current edusync_subadmins value in localStorage:', localStorage.getItem('edusync_subadmins'));
+
+  // Sanitize local storage keys to ensure they are valid JSON arrays/objects
+  const keysToSanitize = ['edusync_subadmins', 'edusync_custom_subjects', 'edusync_users'];
+  keysToSanitize.forEach(key => {
+    try {
+      const stored = localStorage.getItem(key);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (!parsed || (key.endsWith('s') && !Array.isArray(parsed))) {
+          localStorage.removeItem(key);
+        }
+      }
+    } catch (e) {
+      localStorage.removeItem(key);
+    }
+  });
+
   const REG_KEY = 'edusync_regulations'; // legacy key (no longer used for regulation CRUD)
   const DEFAULT_UNIVERSITIES = [
     { name: 'JNTUK', code: 'JNTUK', state: 'Andhra Pradesh', status: 'Active' },
@@ -60,7 +79,7 @@
         cachedRegulations = parsed;
       }
     }
-  } catch (e) {}
+  } catch (e) { }
 
   async function regulations() {
     const supabase = window.__AIMEASY_SUPABASE__;
@@ -421,11 +440,11 @@
         </div>
         <div class="admin-grid" style="margin-bottom:2rem;">
           ${statCards([
-            ['Total Students', s.students, 'var(--primary)'],
-            ['Total Content Creators', s.creators, 'var(--teal)'],
-            ['Total Subjects', s.subjects, 'var(--lavender)'],
-            ['Total Regulations', s.totalRegulations, 'var(--amber)'],
-          ])}
+      ['Total Students', s.students, 'var(--primary)'],
+      ['Total Content Creators', s.creators, 'var(--teal)'],
+      ['Total Subjects', s.subjects, 'var(--lavender)'],
+      ['Total Regulations', s.totalRegulations, 'var(--amber)'],
+    ])}
         </div>
       </div>`;
   }
@@ -446,11 +465,11 @@
         </div>
         <div class="admin-grid" style="margin-bottom:1.6rem;">
           ${statCards([
-            ['Subjects', subjects.length, 'var(--primary)'],
-            ['Videos', countFor('edusync_admin_videos'), 'var(--teal)'],
-            ['Notes', countFor('edusync_admin_notes'), 'var(--lavender)'],
-            ['PYQs', countFor('edusync_admin_pyqs'), 'var(--amber)']
-          ])}
+      ['Subjects', subjects.length, 'var(--primary)'],
+      ['Videos', countFor('edusync_admin_videos'), 'var(--teal)'],
+      ['Notes', countFor('edusync_admin_notes'), 'var(--lavender)'],
+      ['PYQs', countFor('edusync_admin_pyqs'), 'var(--amber)']
+    ])}
         </div>
       </div>`;
   }
@@ -872,7 +891,7 @@
 
     // Get current hash route to preserve it on load/reload
     const currentRoute = (window.location.hash || '').replace(/^#/, '');
-    const isLanding = !currentRoute || currentRoute === '/' || currentRoute === '/landing' || currentRoute === '/intro';
+    const isLanding = !currentRoute || currentRoute === '/' || currentRoute === '/landing' || currentRoute === '/landing';
 
     if (currentRoute && /^\/(admin|subadmin|creator)(\/|$)/.test(currentRoute)) {
       window.__aimeasyPreserveRoleRoute = currentRoute;
@@ -904,7 +923,7 @@
   });
 
   // Edit handlers for sub-admin uploaded resources
-  window.aimeasyEditNote = async function(id, subjectName, unitId) {
+  window.aimeasyEditNote = async function (id, subjectName, unitId) {
     const notes = JSON.parse(localStorage.getItem('edusync_admin_notes') || '[]');
     const note = notes.find(n => n.id === id);
     if (!note) return;
@@ -916,7 +935,7 @@
     }
     const newLink = prompt('Edit Note Link / URL:', note.link || '');
     if (newLink === null) return;
-    
+
     note.title = newTitle.trim();
     note.link = newLink.trim();
     if (note.dbContentId) {
@@ -927,7 +946,7 @@
     }
     localStorage.setItem('edusync_admin_notes', JSON.stringify(notes));
     showToast('Note updated successfully', 'green');
-    
+
     if (typeof v10RefreshContentPane === 'function') await v10RefreshContentPane('notes', subjectName, unitId);
     else {
       const pane = document.getElementById('v10-notes-' + unitId);
@@ -936,7 +955,7 @@
     window.aimeasySyncAndRefresh?.();
   };
 
-  window.aimeasyEditPYQ = async function(id, subjectName, unitId) {
+  window.aimeasyEditPYQ = async function (id, subjectName, unitId) {
     const pyqs = JSON.parse(localStorage.getItem('edusync_admin_pyqs') || '[]');
     const pyq = pyqs.find(p => p.id === id);
     if (!pyq) return;
@@ -970,10 +989,10 @@
         },
       });
     }
-    
+
     localStorage.setItem('edusync_admin_pyqs', JSON.stringify(pyqs));
     showToast('PYQ updated successfully', 'green');
-    
+
     if (typeof v10RefreshContentPane === 'function') await v10RefreshContentPane('pyq', subjectName, unitId);
     else {
       const pane = document.getElementById('v10-pyq-' + unitId);
@@ -982,7 +1001,7 @@
     window.aimeasySyncAndRefresh?.();
   };
 
-  window.aimeasyEditIQ = async function(id, subjectName, unitId) {
+  window.aimeasyEditIQ = async function (id, subjectName, unitId) {
     const iqs = JSON.parse(localStorage.getItem('edusync_admin_iqs') || '[]');
     const iq = iqs.find(q => q.id === id);
     if (!iq) return;
@@ -1012,10 +1031,10 @@
         },
       });
     }
-    
+
     localStorage.setItem('edusync_admin_iqs', JSON.stringify(iqs));
     showToast('Question updated successfully', 'green');
-    
+
     if (typeof v10RefreshContentPane === 'function') await v10RefreshContentPane('iq', subjectName, unitId);
     else {
       const pane = document.getElementById('v10-iq-' + unitId);
@@ -1031,6 +1050,37 @@
     .v10-del-btn:hover { background:var(--red-light) !important; color:var(--red) !important; }
   `;
   document.head.appendChild(styleEl);
+
+  // Initialize default sub-admin in local storage if not present
+  try {
+    let existingSubAdmins = [];
+    const stored = localStorage.getItem('edusync_subadmins');
+    if (stored) {
+      try {
+        existingSubAdmins = JSON.parse(stored);
+      } catch (parseError) {
+        existingSubAdmins = [];
+      }
+    }
+    if (!Array.isArray(existingSubAdmins)) {
+      existingSubAdmins = [];
+    }
+
+    console.log('[aimeasy-fixes] existingSubAdmins array:', existingSubAdmins);
+    if (existingSubAdmins.length === 0) {
+      console.log('[aimeasy-fixes] Seeding default subadmin accounts');
+      existingSubAdmins.push({
+        username: 'subadmin',
+        password: 'subadmin123',
+        branch: 'CSE',
+        createdAt: new Date().toLocaleString()
+      });
+      localStorage.setItem('edusync_subadmins', JSON.stringify(existingSubAdmins));
+      console.log('[aimeasy-fixes] edusync_subadmins seeded successfully:', localStorage.getItem('edusync_subadmins'));
+    }
+  } catch (e) {
+    console.warn('Failed to initialize default subadmin:', e);
+  }
 
   setTimeout(() => {
     updateRegulationDropdowns();

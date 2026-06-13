@@ -1,3 +1,4 @@
+import { supabase } from '../supabase/client.js';
 import {
   hasRemoteBackend,
   loadRemoteState,
@@ -11,8 +12,32 @@ const PATCH_FLAG = '__aimeasyStorageBridgeInstalled';
 let isHydrating = false;
 const HYDRATION_TIMEOUT_MS = 1500;
 
+const EXCLUDED_KEYS = [
+  'edusync_custom_subjects',
+  'edusync_roadmaps',
+  'edusync_universities',
+  'edusync_regulations',
+  'edusync_deleted_universities',
+  'edusync_features',
+  'edusync_disabled_features',
+  'edusync_users',
+  'edusync_subadmins',
+  'edusync_url_requests',
+  'edusync_session_user',
+];
+
 function shouldSyncKey(key) {
-  return typeof key === 'string' && key.startsWith(LEGACY_PREFIX);
+  if (typeof key !== 'string' || !key.startsWith(LEGACY_PREFIX)) {
+    return false;
+  }
+  if (
+    EXCLUDED_KEYS.includes(key) ||
+    key.startsWith('edusync_units_') ||
+    key.startsWith('edusync_admin_')
+  ) {
+    return false;
+  }
+  return true;
 }
 
 export async function hydrateLegacyState() {
@@ -33,6 +58,19 @@ export async function hydrateLegacyState() {
         localStorage.setItem(key, value);
       }
     });
+
+    // Sync sub-admins globally from remote state
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('app_state')
+        .select('value')
+        .eq('key', 'edusync_subadmins')
+        .single();
+      if (!error && data?.value) {
+        localStorage.setItem('edusync_subadmins', data.value);
+        console.log('[AUTH] Loaded global subadmins from database');
+      }
+    }
   } catch (error) {
     console.warn('[AIM EASY backend] Hydration failed:', error.message);
   } finally {
@@ -51,18 +89,39 @@ export function installLegacyStorageBridge() {
   Storage.prototype.setItem = function patchedSetItem(key, value) {
     originalSetItem.call(this, key, value);
 
-    if (this === window.localStorage && shouldSyncKey(key) && !isHydrating) {
-      saveRemoteKey(key, String(value));
+    if (this === window.localStorage && !isHydrating) {
+      if (shouldSyncKey(key)) {
+        saveRemoteKey(key, String(value));
+      } else if (key === 'edusync_subadmins' && supabase) {
+        supabase
+          .from('app_state')
+          .upsert({ key: 'edusync_subadmins', value: String(value), updated_at: new Date().toISOString() })
+          .then(({ error }) => {
+            if (error) console.error('[AUTH] Failed to sync subadmins to DB:', error.message);
+            else console.log('[AUTH] Synced subadmins to DB successfully');
+          });
+      }
     }
   };
 
   Storage.prototype.removeItem = function patchedRemoveItem(key) {
     originalRemoveItem.call(this, key);
 
-    if (this === window.localStorage && shouldSyncKey(key) && !isHydrating) {
-      removeRemoteKey(key);
+    if (this === window.localStorage && !isHydrating) {
+      if (shouldSyncKey(key)) {
+        removeRemoteKey(key);
+      } else if (key === 'edusync_subadmins' && supabase) {
+        supabase
+          .from('app_state')
+          .delete()
+          .eq('key', 'edusync_subadmins')
+          .then(({ error }) => {
+            if (error) console.error('[AUTH] Failed to remove subadmins from DB:', error.message);
+          });
+      }
     }
   };
 
   window[PATCH_FLAG] = true;
 }
+
