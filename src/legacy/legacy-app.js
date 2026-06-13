@@ -9457,55 +9457,63 @@ window.aimSendCurriculumForReview = async function aimSendCurriculumForReview(cu
     const approved = requests.filter(request => request.status === 'approved').length;
     const rejected = requests.filter(request => request.status === 'rejected').length;
     content.innerHTML = `
-      <div class="admin-dashboard-wrap approval-workspace">
-        <div class="admin-section-head approval-page-head">
+      <div class="admin-dashboard-wrap">
+        <div class="admin-section-head" style="margin-bottom: 1.5rem;">
           <div>
             <h2>URL Approvals</h2>
-            <p>Review submitted learning links and keep the content library clean.</p>
-          </div>
-          <div class="approval-stat-cards" aria-label="URL approval statistics">
-            <div class="approval-stat-card approved"><span>Approved URLs</span><strong>${esc(approved)}</strong></div>
-            <div class="approval-stat-card rejected"><span>Rejected URLs</span><strong>${esc(rejected)}</strong></div>
+            <p>Review submitted learning links before they become available.</p>
           </div>
         </div>
-        <div class="approval-summary-line"><span class="badge badge-amber">${esc(pending)} pending</span></div>
-        <div class="approval-card-grid">
-          ${requests.length ? requests.map((request, index) => {
+        
+        <div class="approval-stats-row">
+          <div class="stat-card">
+            <span class="stat-value text-amber">\${esc(pending)}</span>
+            <span class="stat-label">Pending Requests</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value text-green">\${esc(approved)}</span>
+            <span class="stat-label">Approved Requests</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value text-red">\${esc(rejected)}</span>
+            <span class="stat-label">Rejected Requests</span>
+          </div>
+        </div>
+        <div class="approval-list-view">
+          \${requests.length ? requests.map((request, index) => {
             const status = request.status || 'pending';
-            const url = String(request.url || '').trim();
-            const valid = isValidUrl(url);
-            const displayUrl = url || '-';
-            const topic = request.topic || request.subtopic || request.subtopicName || request.topicName || 'Not specified';
-            return `<div class="approval-card approval-${esc(status)}">
-              <div class="approval-card-top">
-                <div class="approval-card-title">
-                  <span>Subject</span>
-                  <h3>${esc(request.subject || 'Subject')}</h3>
-                </div>
-                <span class="badge ${status === 'approved' ? 'badge-green' : status === 'rejected' ? 'badge-red' : 'badge-amber'}">${esc(status)}</span>
-              </div>
-              <div class="approval-detail-grid">
-                <div><span>Unit</span><strong>${esc(request.unitName || ('Unit ' + (request.unit || '-')))}</strong></div>
-                <div><span>Subtopic</span><strong>${esc(topic)}</strong></div>
-                <div><span>Submitted By</span><strong>${esc(request.submittedBy || 'Student')}</strong></div>
-                <div><span>Submitted Date</span><strong>${esc(request.submittedAt || request.date || '-')}</strong></div>
-              </div>
-              <div class="approval-url-row ${valid ? '' : 'invalid'}">
-                <span class="approval-url-label">URL</span>
-                ${valid
-                  ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer" class="approval-url-text">${esc(displayUrl)} ${externalIcon}</a>`
-                  : `<span class="approval-url-text invalid">Invalid URL: ${esc(displayUrl)}</span>`}
-              </div>
-              <div class="approval-actions">
-                <button class="btn btn-primary btn-sm" onclick="adminApproveUrl(${index})">Approve</button>
-                <button class="btn btn-ghost btn-sm" onclick="adminRejectUrl(${index})">Reject</button>
-              </div>
-            </div>`;
+            return \`<div class="approval-list-card approval-\${esc(status)}">\` +
+              \`<div class="approval-info-col">\` +
+                \`<div class="approval-hierarchy">\` +
+                  \`<span class="approval-subject">SUBJECT: \${esc(request.subject || 'Subject')}</span>\` +
+                  \`<span class="approval-divider">/</span>\` +
+                  \`<span class="approval-unit">UNIT: \${esc(request.unitName || ('Unit ' + (request.unit || '-')))}</span>\` +
+                  \`<span class="approval-divider">/</span>\` +
+                  \`<span class="approval-topic">TOPIC: \${esc(request.topicName || request.topic || 'Topic')}</span>\` +
+                \`</div>\` +
+                \`<div class="approval-submitter">\` +
+                  \`<span class="submitter-name">SUBMITTED BY: <b>\${esc(request.submittedBy || 'Student')}</b></span>\` +
+                  \`<span class="submitter-date">ON: \${esc(request.submittedAt || '-')}</span>\` +
+                  \`<span class="badge \${status === 'approved' ? 'badge-green' : status === 'rejected' ? 'badge-red' : 'badge-amber'}">\${esc(status)}</span>\` +
+                \`</div>\` +
+                \`<div class="approval-url-row">\` +
+                  \`<span class="url-label">URL:</span> <a href="\${esc(request.url || '#')}" target="_blank" rel="noopener noreferrer" class="approval-url-text">\${esc(request.url || '-')}</a>\` +
+                \`</div>\` +
+              \`</div>\` +
+              \`<div class="approval-actions-col">\` +
+                \`<a href="\${esc(request.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Link</a>\` +
+                (status === 'pending' ? \`\` +
+                \`<button class="btn btn-primary btn-sm" onclick="adminApproveUrl(\${index})">Approve</button>\` +
+                \`<button class="btn btn-danger btn-sm" onclick="adminRejectUrl(\${index})">Reject</button>\` +
+                \`\` : '') +
+                \`<button class="btn btn-ghost btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">Edit</button>\` +
+                \`<button class="btn btn-danger btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">Delete</button>\` +
+              \`</div>\` +
+            \`</div>\`;
           }).join('') : '<div class="empty-state-card">No URL requests yet.</div>'}
         </div>
       </div>`;
   };
-
   renderSAUrlRequests = function renderSAUrlRequestsCardProduction() {
     renderApprovalLinksProduction('subadmin');
   };

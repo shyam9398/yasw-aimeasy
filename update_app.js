@@ -1,14 +1,84 @@
-const fs=require('fs');
-let t=fs.readFileSync('src/legacy/legacy-app.js','utf8');
+import fs from 'fs';
+
+const t = fs.readFileSync('src/legacy/legacy-app.js', 'utf8');
+
 const startStr = "  renderApprovalLinksProduction = function renderApprovalLinksCardProduction(owner = 'admin') {";
 const endStr = "  renderSAUrlRequests = function renderSAUrlRequestsCardProduction() {";
+
 const start = t.indexOf(startStr);
 const end = t.indexOf(endStr);
-if(start !== -1 && end !== -1) {
-  const replacement = startStr + `\n    const content = document.getElementById(owner === 'admin' ? 'admin-content' : 'sa-content');\n    if (!content) return;\n    const requests = read('edusync_url_requests', []);\n    const pending = requests.filter(request => (request.status || 'pending') === 'pending').length;\n    const approved = requests.filter(request => request.status === 'approved').length;\n    const rejected = requests.filter(request => request.status === 'rejected').length;\n    content.innerHTML = \\`\n      <div class="admin-dashboard-wrap">\n        <div class="admin-section-head" style="margin-bottom: 1.5rem;">\n          <div>\n            <h2>URL Approvals</h2>\n            <p>Review submitted learning links before they become available.</p>\n          </div>\n        </div>\n        \n        <div class="approval-stats-row">\n          <div class="stat-card">\n            <span class="stat-value text-amber">\${esc(pending)}</span>\n            <span class="stat-label">Pending Requests</span>\n          </div>\n          <div class="stat-card">\n            <span class="stat-value text-green">\${esc(approved)}</span>\n            <span class="stat-label">Approved Requests</span>\n          </div>\n          <div class="stat-card">\n            <span class="stat-value text-red">\${esc(rejected)}</span>\n            <span class="stat-label">Rejected Requests</span>\n          </div>\n        </div>\n\n        <div class="approval-list-view">\n          \${requests.length ? requests.map((request, index) => {\n            const status = request.status || 'pending';\n            return \\\\\\`<div class="approval-list-card approval-\${esc(status)}">\\\\\\` +\n              \\\\\\`<div class="approval-info-col">\\\\\\` +\n                \\\\\\`<div class="approval-hierarchy">\\\\\\` +\n                  \\\\\`<span class="approval-subject">SUBJECT: \${esc(request.subject || 'Subject')}</span>\\\\\` +\n                  \\\\\\`<span class="approval-divider">/</span>\\\\\\` +\n                  \\\\\\`<span class="approval-unit">UNIT: \${esc(request.unitName || ('Unit ' + (request.unit || '-')))}</span>\\\\\` +\n                  \\\\\\`<span class="approval-divider">/</span>\\\\\\` +\n                  \\\\\\`<span class="approval-topic">TOPIC: \${esc(request.topicName || request.topic || 'Topic')}</span>\\\\\` +\n                \\\\\\`</div>\\\\\` +\n                \\\\\\`<div class="approval-submitter">\\\\\\` +\n                  \\\\\\`<span class="submitter-name">SUBMITTED BY: <b>\${esc(request.submittedBy || 'Student')}</b></span>\\\\\\` +\n                  \\\\\`<span class="submitter-date">ON: \${esc(request.submittedAt || '-')}</span>\\\\\` +\n                  \\\\\\`<span class="badge \${status === 'approved' ? 'badge-green' : status === 'rejected' ? 'badge-red' : 'badge-amber'}">\${esc(status)}</span>\\\\\\` +\n                \\\\\\`</div>\\\\\` +\n                \\\\\\`<div class="approval-url-row">\\\\\` +\n                  \\\\\\`<span class="url-label">URL:</span> <a href="\${esc(request.url || '#')}" target="_blank" rel="noopener noreferrer" class="approval-url-text">\${esc(request.url || '-')}</a>\\\\\\` +\n                \\\\\\`</div>\\\\\\` +\n              \\\\\`</div>\\\\\` +\n              \\\\\`<div class="approval-actions-col">\\\\\\` +\n                \\\\\\`<a href="\${esc(request.url || '#')}" target="_blank" rel="noopener noreferrer" class="btn btn-ghost btn-sm">View Link</a>\\\\\\` +\n                (status === 'pending' ? \\\\\\`\\\\\\` +\n                \\\\\\`<button class="btn btn-primary btn-sm" onclick="adminApproveUrl(\${index})">Approve</button>\\\\\\` +\n                \\\\\\`<button class="btn btn-danger btn-sm" onclick="adminRejectUrl(\${indext)">Reject</button>\\\\\\` +\n                \\\\\\`\\\\\` : '') +\n                \\\\\\`<button class="btn btn-ghost btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">Edit</button>\\\\\` +\n                \\\\\\`<button class="btn btn-danger btn-sm" disabled style="opacity:0.5;cursor:not-allowed;">Delete</button>\\\\\` +\n              \\\\\`</div>\\\\\` +\n            \\\\\\`</div>\\\\\\`;\n          }).join('') : '<div class="empty-state-card">No URL requests yet.</div>'}\n        </div>\n      </div>\\`;\n  };\n\n`;
-  t = t.substring(0, start) + replacement + t.substring(end);
-  fs.writeFileSync('src/legacy/legacy-app.js', t);
-  console.log('Replaced legacy-app.js');
+
+if (start !== -1 && end !== -1) {
+  const codeLines = [
+    "  renderApprovalLinksProduction = function renderApprovalLinksCardProduction(owner = 'admin') {",
+    "    const content = document.getElementById(owner === 'admin' ? 'admin-content' : 'sa-content');",
+    "    if (!content) return;",
+    "    const requests = read('edusync_url_requests', []);",
+    "    const pending = requests.filter(request => (request.status || 'pending') === 'pending').length;",
+    "    const approved = requests.filter(request => request.status === 'approved').length;",
+    "    const rejected = requests.filter(request => request.status === 'rejected').length;",
+    "    content.innerHTML = `",
+    "      <div class=\"admin-dashboard-wrap\">",
+    "        <div class=\"admin-section-head\" style=\"margin-bottom: 1.5rem;\">",
+    "          <div>",
+    "            <h2>URL Approvals</h2>",
+    "            <p>Review submitted learning links before they become available.</p>",
+    "          </div>",
+    "        </div>",
+    "        ",
+    "        <div class=\"approval-stats-row\">",
+    "          <div class=\"stat-card\">",
+    "            <span class=\"stat-value text-amber\">\\${esc(pending)}</span>",
+    "            <span class=\"stat-label\">Pending Requests</span>",
+    "          </div>",
+    "          <div class=\"stat-card\">",
+    "            <span class=\"stat-value text-green\">\\${esc(approved)}</span>",
+    "            <span class=\"stat-label\">Approved Requests</span>",
+    "          </div>",
+    "          <div class=\"stat-card\">",
+    "            <span class=\"stat-value text-red\">\\${esc(rejected)}</span>",
+    "            <span class=\"stat-label\">Rejected Requests</span>",
+    "          </div>",
+    "        </div>",
+    "        <div class=\"approval-list-view\">",
+    "          \\${requests.length ? requests.map((request, index) => {",
+    "            const status = request.status || 'pending';",
+    "            return \\`<div class=\"approval-list-card approval-\\${esc(status)}\">\\` +",
+    "              \\`<div class=\"approval-info-col\">\\` +",
+    "                \\`<div class=\"approval-hierarchy\">\\` +",
+    "                  \\`<span class=\"approval-subject\">SUBJECT: \\${esc(request.subject || 'Subject')}</span>\\` +",
+    "                  \\`<span class=\"approval-divider\">/</span>\\` +",
+    "                  \\`<span class=\"approval-unit\">UNIT: \\${esc(request.unitName || ('Unit ' + (request.unit || '-')))}</span>\\` +",
+    "                  \\`<span class=\"approval-divider\">/</span>\\` +",
+    "                  \\`<span class=\"approval-topic\">TOPIC: \\${esc(request.topicName || request.topic || 'Topic')}</span>\\` +",
+    "                \\`</div>\\` +",
+    "                \\`<div class=\"approval-submitter\">\\` +",
+    "                  \\`<span class=\"submitter-name\">SUBMITTED BY: <b>\\${esc(request.submittedBy || 'Student')}</b></span>\\` +",
+    "                  \\`<span class=\"submitter-date\">ON: \\${esc(request.submittedAt || '-')}</span>\\` +",
+    "                  \\`<span class=\"badge \\${status === 'approved' ? 'badge-green' : status === 'rejected' ? 'badge-red' : 'badge-amber'}\">\\${esc(status)}</span>\\` +",
+    "                \\`</div>\\` +",
+    "                \\`<div class=\"approval-url-row\">\\` +",
+    "                  \\`<span class=\"url-label\">URL:</span> <a href=\"\\${esc(request.url || '#')}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"approval-url-text\">\\${esc(request.url || '-')}</a>\\` +",
+    "                \\`</div>\\` +",
+    "              \\`</div>\\` +",
+    "              \\`<div class=\"approval-actions-col\">\\` +",
+    "                \\`<a href=\"\\${esc(request.url || '#')}\" target=\"_blank\" rel=\"noopener noreferrer\" class=\"btn btn-ghost btn-sm\">View Link</a>\\` +",
+    "                (status === 'pending' ? \\`\\` +",
+    "                \\`<button class=\"btn btn-primary btn-sm\" onclick=\"adminApproveUrl(\\${index})\">Approve</button>\\` +",
+    "                \\`<button class=\"btn btn-danger btn-sm\" onclick=\"adminRejectUrl(\\${index})\">Reject</button>\\` +",
+    "                \\`\\` : '') +",
+    "                \\`<button class=\"btn btn-ghost btn-sm\" disabled style=\"opacity:0.5;cursor:not-allowed;\">Edit</button>\\` +",
+    "                \\`<button class=\"btn btn-danger btn-sm\" disabled style=\"opacity:0.5;cursor:not-allowed;\">Delete</button>\\` +",
+    "              \\`</div>\\` +",
+    "            \\`</div>\\`;",
+    "          }).join('') : '<div class=\"empty-state-card\">No URL requests yet.</div>'}",
+    "        </div>",
+    "      </div>`;",
+    "  };"
+  ].join('\n');
+
+  fs.writeFileSync('src/legacy/legacy-app.js', t.substring(0, start) + codeLines + '\n' + t.substring(end));
+  console.log('Replaced legacy-app.js successfully');
 } else {
   console.log('Not found in legacy-app.js', start, end);
 }

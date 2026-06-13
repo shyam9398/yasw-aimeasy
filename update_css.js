@@ -1,9 +1,9 @@
-const fs=require('fs');
+import fs from 'fs';
 let t=fs.readFileSync('src/styles/global.css','utf8');
 const start = t.indexOf('.approval-card-grid {');
 const end = t.indexOf('.approval-link {');
 if(start !== -1 && end !== -1) {
-  const replacement = \
+  const replacement = `
 .approval-list-view {
   display: flex;
   flex-direction: column;
@@ -136,7 +136,7 @@ if(start !== -1 && end !== -1) {
   letter-spacing: 0.05em;
 }
 
-\;
+`;
   t = t.substring(0, start) + replacement + t.substring(end);
   fs.writeFileSync('src/styles/global.css', t);
   console.log('Replaced global.css');
