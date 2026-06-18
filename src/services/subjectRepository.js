@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js';
+import { supabase } from './supabase.service.js';
 
 export async function getSubjects(filters = {}) {
     let query = supabase.from('subjects').select('*');

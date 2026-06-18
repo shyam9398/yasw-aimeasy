@@ -1,3 +1,4 @@
+
 /**
  * Critical system fixes — auth, roles, navigation, video, search, content, admin stats.
  * Loaded after legacy scripts; patches window globals without changing UI markup.
@@ -1072,11 +1073,9 @@ if (!/^[0-9]{10}$/.test(phone)) {
   // wrapContentUpload('v10UploadPYQ', 'pyq');
   // wrapContentUpload('v10UploadIQ', 'iq');
 
-  // Single OAuth callback completion. Normal startup restores profile silently in AuthProvider;
-  // protected-route refresh is handled by installBrowserNavigation.
   if (window.__AIMEASY_SUPABASE__) {
     window.setTimeout(async () => {
-      if (isOAuthCallbackUrl()) await window.syncSessionFromSupabase?.({ reason: 'oauth-callback-load' });
+      await window.syncSessionFromSupabase?.({ reason: 'app-boot' });
     }, 0);
   }
 

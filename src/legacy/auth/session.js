@@ -1,3 +1,5 @@
+import { supabase } from '../../services/supabase/client.js';
+
 // Common legacy helpers used across modules
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const js = (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
@@ -25,25 +27,13 @@ export function setLocalLegacySession(user) {
 }
 
 export async function syncSessionFromSupabase({ reason } = {}) {
-  if (
-    typeof window.syncSessionFromSupabase === 'function' &&
-    window.syncSessionFromSupabase !== syncSessionFromSupabase
-  ) {
-    return window.syncSessionFromSupabase({ reason: reason || 'legacy-delegated' });
-  }
-
-  // Pull Supabase session.
-  // Do NOT auto-redirect to dashboard until profile completion is verified.
-
   // This is the core fix for OAuth redirect + session persistence.
   try {
-    if (!window.__AIMEASY_SUPABASE__) {
-      logAuth('Supabase client missing on window.__AIMEASY_SUPABASE__');
-      return false;
-    }
+    // Ensure the singleton client is assigned to the window for legacy access
+    window.supabase = supabase;
 
     logAuth('Getting Supabase session...', { reason });
-    const { data, error } = await window.__AIMEASY_SUPABASE__.auth.getSession();
+    const { data, error } = await supabase.auth.getSession();
     if (error) {
       logAuth('getSession error', error);
       return false;
@@ -60,7 +50,6 @@ export async function syncSessionFromSupabase({ reason } = {}) {
     }
 
     // Map Supabase user -> legacy user shape expected by UI.
-    // Keep it minimal; profileStep UI can still enrich it later.
     const u = session.user;
     const legacyUser = {
       id: u.id,
@@ -72,40 +61,7 @@ export async function syncSessionFromSupabase({ reason } = {}) {
 
     setLocalLegacySession(legacyUser);
 
-    // Route based on profile completion status (do NOT auto-landing dashboard)
-    // This codebase's profile gating is localStorage-based.
-    // AIIENS Edu fixes handle saving/enrichment on submit; here we only decide the screen.
-    const user = session.user || session;
-    const legacy = JSON.parse(localStorage.getItem('edusync_session_user') || 'null') || APP.user || {};
-    const hasPersonal = !!(legacy.name && legacy.phone);
-    const hasAcademic = !!(legacy.university && legacy.regulation && legacy.branch && legacy.semester);
-
-    const hash = window.location.hash.replace(/^#/, '');
-    const isAtLanding = !hash || hash === '/' || hash === '/landing';
-
-    // Preserve existing hash for any role on refresh
-    if (!isAtLanding) {
-      // Extract first non‑empty segment after the leading slash
-      const hashParts = window.location.hash.replace(/^#/, '').split('/').filter(Boolean);
-      const target = hashParts[0] || '';
-      if (target) {
-        // Simple routing based on hash prefix
-        if (target.startsWith('admin')) {
-          showScreen('screen-admin');
-        } else if (target.startsWith('subadmin')) {
-          showScreen('screen-subadmin');
-        } else {
-          // Fallback to generic navigation for other routes
-          navigateTo(target);
-        }
-        return true;
-      }
-      // If no specific target, fall back to student flow
-      launchApp();
-    }
-
     return true;
-
 
   } catch (e) {
     logAuth('syncSessionFromSupabase exception', { error: String(e) });
@@ -158,9 +114,9 @@ export async function confirmLogout() {
   closeLogoutModal();
   showToast('👋 Logged out successfully', 'blue');
 
-  if (window.__AIMEASY_SUPABASE__) {
+  if (supabase) {
     try {
-      await window.__AIMEASY_SUPABASE__.auth.signOut();
+      await supabase.auth.signOut();
     } catch (e) {
       console.warn('Supabase signOut failed:', e);
     }
@@ -247,8 +203,7 @@ export function googleSignIn(accountType) {
   showLoading('Authenticating with Google...');
 
   try {
-    const supabaseClient = window.__AIMEASY_SUPABASE__;
-    if (!supabaseClient) {
+    if (!supabase) {
       window.__aimeasyOAuthStartInFlight = false;
       hideLoading();
       logAuth('Supabase client missing; falling back to legacy mock');
@@ -265,26 +220,6 @@ export function googleSignIn(accountType) {
       sessionStorage.setItem('aimeasy_login_portal', APP.role === 'content_creator' ? 'content_creator' : 'student');
     } catch (e) { }
 
-    // Legacy mock accounts are disabled. All roles use the real OAuth path.
-    if (false && (accountType === 'teacher1' || accountType === 'teacher2')) {
-      const TEACHER_PROFILES = {
-        teacher1: { name: 'Prof. Ramesh Kumar', googleId: 'teacher1', email: 'ramesh.kumar@jntuk.edu.in', role: 'teacher', dept: 'CSE', subject: 'Operating Systems' },
-        teacher2: { name: 'Prof. Lakshmi Prasad', googleId: 'teacher2', email: 'lakshmi.prasad@jntuk.edu.in', role: 'teacher', dept: 'ECE', subject: 'Digital Electronics' },
-      };
-      const profile = TEACHER_PROFILES[accountType];
-      setTimeout(() => {
-        hideLoading();
-        APP.role = 'teacher';
-        APP.teacherData = profile;
-        launchTeacherPortal(profile);
-        showToast(`✅ Welcome, ${profile.name}!`, 'green');
-      }, 700);
-      return;
-    }
-
-    // Real Google OAuth for student and content creator accounts.
-    // Persist current intended role in-memory; role selection screen already sets APP.role.
-    // After redirect, syncSessionFromSupabase() + auth-state listener will route to dashboard.
     window.aimeasyStartGoogleOAuth(APP.role)
       .then(({ data, error }) => {
         logAuth('OAuth signInWithOAuth returned', { data, error });
@@ -293,7 +228,6 @@ export function googleSignIn(accountType) {
           hideLoading();
           showToast(`Google sign-in error: ${error.message || String(error)}`, 'red');
         }
-        // On success, the browser will redirect; no further UI update needed.
       })
       .catch((e) => {
         window.__aimeasyOAuthStartInFlight = false;

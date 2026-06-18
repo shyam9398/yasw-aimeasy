@@ -1,77 +1,56 @@
-// Common legacy helpers used across modules
-const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
-const js = (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-const sb = () => window.__AIMEASY_SUPABASE__;
-const todayKeyDb = (date = new Date()) => date.toISOString().slice(0, 10);
-const pctFromCgpa = (cgpa) => Math.max(0, Math.min(100, Number(cgpa || 0) * 9.5));
+import { renderUnits } from '../units/renderUnits.js';
 
-export async function openSubject(id) {
-  // Enrich built-in subject with logged-in student profile fields if missing
-  const sem = document.getElementById('sem-switcher')?.value || APP.user?.semester || '3-1';
-  const uni = APP.user?.university || 'JNTUK';
-  const reg = APP.user?.regulation || 'R23';
-  const branch = APP.user?.branch || 'CSE';
+// Make it globally available
+window.openSubject = openSubject;
 
-  const builtinSubjects = SUBJECTS_DB[sem] || SUBJECTS_DB['3-1'];
-  let subj = builtinSubjects.find(s => s.id === id);
+export function openSubject(id) {
+    if (!id) return;
 
-  // Also search custom subjects created by sub admin
-  if (!subj && id.startsWith('custom_')) {
-    const rawId = id.replace('custom_', '');
-    let dbSubjects = [];
-    if (window.aimeasyFetchSubjects) {
-      const filters = {
-        semester: sem,
-        university_name: uni,
-        branch: branch,
-        regulation_code: reg
-      };
-      const { data, error } = await window.aimeasyFetchSubjects(filters);
-      if (!error && data) dbSubjects = data;
+    const subj = window.APP?.subjects?.find(s => s.id === id);
+
+    if (!subj) {
+        console.error(`[openSubject] Subject with id ${id} not found in APP.subjects`);
+        return;
     }
-    const cs = dbSubjects.find(s => String(s.id) === rawId);
-    if (cs) {
-      const colorOptions = ['teal', 'lavender', 'blue', 'green', 'amber'];
-      let unitCount = 5;
-      if (window.aimeasyFetchUnits) {
-        const { data: units } = await window.aimeasyFetchUnits(cs.id);
-        if (units) unitCount = units.length;
-      }
-      subj = {
-        id: id,
-        rawId: cs.id,
-        name: cs.name,
-        code: cs.code,
-        credits: parseInt(cs.credits) || 3,
-        units: unitCount,
-        progress: 0,
-        color: colorOptions[0],
-        icon: '\u{1F4D6}',
-        isCustom: true,
-        sem: sem,
-        uni: uni,
-        reg: reg,
-        branch: branch
-      };
+
+    // Set the modern, canonical state object. This is always done.
+    window.APP.currentSubject = subj;
+
+    // --- ENTRY POINT BRIDGE ---
+    // If the user is a SubAdmin, we route to the legacy unit management page.
+    if (window.APP?.userProfile?.role === 'subadmin') {
+        
+        // 1. Create the legacy state object (_v10SASubj) by mapping from the modern one.
+        const legacySubj = {
+            id: subj.id,
+            name: subj.name,
+            code: subj.code || '',
+            sem: subj.semester || '',
+            semester: subj.semester || '',
+            reg: subj.regulation || 'R23',
+            regulation_code: subj.regulation || 'R23',
+            uni: subj.university || 'JNTUK',
+            university_name: subj.university || 'JNTUK',
+            branch: subj.branch || 'CSE',
+            credits: subj.credits || 3
+        };
+        window._v10SASubj = legacySubj;
+
+        // 2. Call the legacy rendering function for the units page.
+        // This function is defined in src/legacy/units/unitHelpers.js
+        if (window.v10SAUnitsPage) {
+            window.v10SAUnitsPage(legacySubj);
+        } else {
+            console.error('[openSubject] Legacy function v10SAUnitsPage not found.');
+        }
+
+        // 3. CRITICAL: Stop execution to prevent a double-render.
+        // The default `renderUnits()` call below will not be reached for SubAdmins.
+        return;
     }
-  }
+    // --- END BRIDGE ---
 
-  if (!subj) return;
-  APP.currentSubject = subj;
-  addToRecentlyOpened(subj.name, subj.code, subj.icon, subj.id);
-  recordStudyActivity('subject_opened', { subjectId: subj.id, subjectName: subj.name });
-  navigateTo('units');
 
-  const topTitleEl = document.getElementById('topbar-title');
-  if (topTitleEl) topTitleEl.textContent = subj.name;
-  const breadEl = document.getElementById('topbar-breadcrumb');
-  if (breadEl) breadEl.innerHTML = `Subjects / <span>${subj.name}</span>`;
-
-  const tagsEl = document.getElementById('units-tags');
-  if (tagsEl) {
-    const progress = getSubjectProgress(subj);
-    tagsEl.innerHTML = `<span class="badge badge-primary">${subj.code}</span><span class="badge badge-teal">${subj.credits} Credits</span><span class="badge badge-lavender">${progress}% Complete</span>`;
-  }
-
-  await renderUnits(subj);
+    // Default execution path for all non-SubAdmin roles (students, admins).
+    renderUnits();
 }
