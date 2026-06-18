@@ -1,3 +1,4 @@
+import React from 'react';
 import { appPages } from '../../pages/pageRegistry.js';
 import LegacyHtmlPage from './LegacyHtmlPage.jsx';
 import {
