@@ -11,6 +11,7 @@ export function showLoading(text) {
   ol.classList.remove('hidden');
 }
 
+let toastTimeout;
 export function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
