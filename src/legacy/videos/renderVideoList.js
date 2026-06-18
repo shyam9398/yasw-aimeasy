@@ -24,14 +24,14 @@ export async function renderVideoList(subjectId, unitNum) {
         console.log('[ROADMAP] Student Load Success', {
           subjectId: data?.subjectId,
           unitId: data?.unitId,
-          topicCount: data?.topics?.length || 0,
+          topicCount: data?.unit?.topics?.length || 0,
         });
         console.log('[STUDENT] Roadmap Loaded', {
           subjectId: data?.subjectId,
           unitId: data?.unitId,
-          topicCount: data?.topics?.length || 0,
+          topicCount: data?.unit?.topics?.length || 0,
         });
-        roadmapTopics = data?.topics || [];
+        roadmapTopics = data?.unit?.topics || [];
       }
     }
   }

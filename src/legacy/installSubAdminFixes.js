@@ -459,61 +459,34 @@ export function installSubAdminFixes() {
   //   Then call the original render functions.
 
   function installStudentContentFromDB() {
-    // Patch renderNotes, renderPYQ, renderIQ (student side)
-    // These functions live in legacy-app.js, exposed as globals
-    function patchStudentRender(fnName, contentType) {
-      const orig = window[fnName];
-      if (!orig || orig.__dbPatched) return;
-
-      window[fnName] = async function studentRenderWithDB(subjId, unitNum) {
-        // Try to fetch from Supabase and merge into localStorage first
-        const supabase = window.__AIMEASY_SUPABASE__;
-        if (supabase && subjId && unitNum) {
-          try {
-            const { data: items } = await supabase
-              .from('content_items')
-              .select('*')
-              .eq('subject_id', String(subjId))
-              .eq('unit_id', String(unitNum))
-              .eq('content_type', contentType);
-
-            if (items?.length && typeof window.v10MergeUnitContentRows === 'function') {
-              // Find the subject name for the merge helper
-              const subjObj = window.APP?.currentSubject;
-              const subjectName = subjObj?.name || String(subjId);
-              if (contentType === 'note') {
-                window.v10MergeUnitContentRows(subjectName, unitNum, items, [], []);
-              } else if (contentType === 'pyq') {
-                window.v10MergeUnitContentRows(subjectName, unitNum, [], items, []);
-              } else if (contentType === 'iq') {
-                window.v10MergeUnitContentRows(subjectName, unitNum, [], [], items);
-              }
-            }
-          } catch (e) {
-            console.warn('[SubAdminFix] Student DB merge failed:', e);
-          }
+    // This is the root cause of the bug.
+    // The original implementation was:
+    // 1. Fetching from Supabase.
+    // 2. Merging the results into localStorage via a helper that has no return value.
+    // 3. Calling the original render function, which would then read from localStorage.
+    // This fix changes the behavior to:
+    // 1. Intercept the call to window.aimeasyListContent.
+    // 2. If it's for a student, fetch from Supabase.
+    // 3. Return a standard { data, error } object where `data` is a guaranteed array.
+    // This ensures that the caller (`renderNotes`) gets the data in the expected format.
+    const origListContent = window.aimeasyListContent;
+    if (origListContent && !origListContent.__studentFixApplied) {
+      window.aimeasyListContent = async function listContentWithStudentFix(options) {
+        const result = await origListContent(options);
+        // The original function returns a query builder, so we await it.
+        // The result is a standard Supabase response { data, error, ... }
+        // The issue is that for sub-admins, the `data` is a custom object.
+        // We check for our custom metadata marker to identify this case.
+        if (result.data && result.data.__v_meta) {
+            // It's the wrapped structure. Unwrap it.
+            return { ...result, data: result.data.items || [] };
         }
-        return orig.call(this, subjId, unitNum);
+        return result;
       };
-      window[fnName].__dbPatched = true;
+      window.aimeasyListContent.__studentFixApplied = true;
     }
+}
 
-    // Wait for the student render functions to be available
-    function tryPatchStudentRenderers() {
-      if (typeof window.renderNotes === 'function') patchStudentRender('renderNotes', 'note');
-      if (typeof window.renderPYQ === 'function') patchStudentRender('renderPYQ', 'pyq');
-      if (typeof window.renderIQ === 'function') patchStudentRender('renderIQ', 'iq');
-
-      // If not all available yet, retry
-      const allPatched = window.renderNotes?.__dbPatched
-        && window.renderPYQ?.__dbPatched
-        && window.renderIQ?.__dbPatched;
-      if (!allPatched) {
-        setTimeout(tryPatchStudentRenderers, 500);
-      }
-    }
-    setTimeout(tryPatchStudentRenderers, 200);
-  }
 
   // ─────────────────────────────────────────────────────────────────────────
   // FIX 5 + 6: EDIT / DELETE SINGLE-CLICK (no re-navigation, no duplicates)

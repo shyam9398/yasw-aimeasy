@@ -20,7 +20,17 @@ export async function renderNotes(subjectId, unitNum) {
       unit: { id: unitId, name: `Unit ${unitId}`, dbUnitId: subject?.dbUnitIds?.[unitId] },
     });
     if (ctx?.data?.subjectId && ctx?.data?.unitId) {
-      const { data } = await window.aimeasyListContent({ subjectId: ctx.data.subjectId, unitId: ctx.data.unitId, contentType: 'note' });
+      const result = await window.aimeasyListContent({ subjectId: ctx.data.subjectId, unitId: ctx.data.unitId, contentType: 'note' });
+      
+      console.log('---Deep Runtime Investigation---');
+      console.log('FULL RESULT', result);
+      console.log('RESULT KEYS', Object.keys(result || {}));
+      console.log('DATA VALUE', result?.data);
+      console.log('DATA CONSTRUCTOR', result?.data?.constructor?.name);
+      console.log('DATA PROTOTYPE', Object.getPrototypeOf(result?.data));
+      console.log('DATA MAP FUNCTION', result?.data?.map);
+      
+      const { data } = result;
       if (data) {
         customNotes = data.map(n => ({
           title: n.title || 'Untitled Note',

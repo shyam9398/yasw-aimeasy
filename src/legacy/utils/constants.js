@@ -8,7 +8,7 @@ const pctFromCgpa = (cgpa) => Math.max(0, Math.min(100, Number(cgpa || 0) * 9.5)
 export const GRADES = { O: 10, 'A+': 9, A: 8, 'B+': 7, B: 6, C: 5, F: 0 };
 const DEFAULT_SUBJECTS = ['Data Structures', 'Operating Systems', 'DBMS', 'Computer Networks', 'Software Engineering'];
 
-function loadCalcState() {
+export function loadCalcState() {
   try {
     const saved = localStorage.getItem('edusync_cgpa_data');
     if (saved) {
