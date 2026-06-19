@@ -17,6 +17,8 @@ async function waitForElement(id, timeout = 5000) {
 }
 
 export async function renderSubjects(arg) {
+    console.error('🔥 ORIGINAL renderSubjects EXECUTED');
+    debugger;
     console.log('[renderSubjects] START');
     try {
         const grid = await waitForElement('subjects-grid');
