@@ -1,3 +1,4 @@
+import { DEFAULT_SUBJECTS } from './constants.js';
 // Common legacy helpers used across modules
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const js = (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");

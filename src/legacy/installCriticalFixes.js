@@ -1,8 +1,3 @@
-
-/**
- * Critical system fixes — auth, roles, navigation, video, search, content, admin stats.
- * Loaded after legacy scripts; patches window globals without changing UI markup.
- */
 import { hydrateProfileAcademicDropdowns } from '../services/academic/academicCatalog.js';
 import { fetchAdminDashboardStats, fetchLandingStats } from '../services/admin/adminStatsService.js';
 import { authLog, AUTH_STAGES } from '../services/auth/authLogger.js';
@@ -178,41 +173,57 @@ export function installCriticalFixes() {
     });
   }
 
-  async function completeOAuthCallback(supabase) {
-    const hash = window.location.hash || '';
-    const search = window.location.search || '';
-    const searchParams = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search);
-    const rawHash = hash.replace(/^#/, '');
-    const hashQuery = hash.includes('?') ? hash.slice(hash.indexOf('?') + 1) : rawHash.replace(/^\/auth[/?&]?/, '');
-    const hashParams = new URLSearchParams(hashQuery);
-    const code = searchParams.get('code') || hashParams.get('code');
+  async function completeOAuthCallback() {
+    const supabase = window.__AIMEASY_SUPABASE__;
+    if (!supabase) return;
+
+    const searchParams = new URLSearchParams(window.location.search);
+    const code = searchParams.get('code');
 
     if (code && typeof supabase.auth.exchangeCodeForSession === 'function') {
-      const callbackKey = `pkce:${code}`;
-      if (!window.__aimeasyOAuthCallbackKey || window.__aimeasyOAuthCallbackKey !== callbackKey) {
+        const callbackKey = `pkce:${code}`;
+        
+        if (window.__aimeasyOAuthCallbackKey === callbackKey) {
+            return window.__aimeasyOAuthCallbackPromise;
+        }
+        
         window.__aimeasyOAuthCallbackKey = callbackKey;
-        window.__aimeasyOAuthCallbackPromise = exchangeOAuthCodeOnce(code).then(() => {
-          authLog(AUTH_STAGES.SUCCESS, { source: 'exchangeCodeForSession' });
-          window.history.replaceState(window.history.state, '', `${window.location.pathname}#/auth`);
+        
+        window.__aimeasyOAuthCallbackPromise = exchangeOAuthCodeOnce(code).then((result) => {
+            authLog(AUTH_STAGES.SUCCESS, { source: 'exchangeCodeForSession' });
+            // Clean the URL immediately and aggressively.
+            window.history.replaceState(null, '', window.location.pathname);
+            return result;
         });
-      }
-      return window.__aimeasyOAuthCallbackPromise;
+
+        return window.__aimeasyOAuthCallbackPromise;
     }
 
     if (typeof supabase.auth.getSessionFromUrl === 'function') {
-      if (rawHash.startsWith('/auth') && /access_token|refresh_token/.test(rawHash)) {
-        const tokenFragment = rawHash.replace(/^\/auth[/?&]?/, '');
-        window.history.replaceState(window.history.state, '', `${window.location.pathname}#${tokenFragment}`);
-      }
-      await supabase.auth.getSessionFromUrl();
+        const rawHash = (window.location.hash || '').replace(/^#/, '');
+        if (rawHash.startsWith('/auth') && /access_token|refresh_token/.test(rawHash)) {
+            const tokenFragment = rawHash.replace(/^\/auth[/?&]?/, '');
+             window.history.replaceState(window.history.state, '', `${window.location.pathname}#${tokenFragment}`);
+        }
+        return supabase.auth.getSessionFromUrl();
     }
   }
 
   // ─── Issue 1 & 2: Central Supabase post-auth (student Google only) ───
   window.syncSessionFromSupabase = async function syncSessionFromSupabaseFixed({ reason } = {}) {
     if (window.__aimeasyAuthSyncInFlight) return window.__aimeasyAuthSyncInFlight;
+
+    if (!window.__AIMEASY_SUPABASE__) {
+        await new Promise(resolve => {
+            const interval = setInterval(() => {
+                if (window.__AIMEASY_SUPABASE__) {
+                    clearInterval(interval);
+                    resolve();
+                }
+            }, 25)
+        })
+    }
     const supabase = window.__AIMEASY_SUPABASE__;
-    if (!supabase) return false;
 
     window.__aimeasyAuthSyncInFlight = (async () => {
       window.__aimeasyAuthRestoring = true;
@@ -288,21 +299,10 @@ export function installCriticalFixes() {
             reason,
             userId: initialSession.data.session.user.id,
           });
-          window.history.replaceState(window.history.state, '', `${window.location.pathname}#/auth`);
+          window.history.replaceState(null, '', window.location.pathname);
         } else {
-          try {
-            await withAuthTimeout(completeOAuthCallback(supabase), 'syncSessionFromSupabase.oauthCallback');
-            invalidateSessionCache();
-          } catch (e) {
-            console.warn('OAuth callback completion:', e);
-            const { data } = await supabase.auth.getSession();
-            window.history.replaceState(window.history.state, '', `${window.location.pathname}#/auth`);
-            window.hideLoading?.();
-            if (!data?.session?.user) {
-            window.showToast?.('Google sign-in could not be completed. Please try again.', 'red');
-            }
-            return false;
-          }
+          await withAuthTimeout(completeOAuthCallback(), 'syncSessionFromSupabase.oauthCallback');
+          invalidateSessionCache();
         }
       }
 
@@ -968,7 +968,7 @@ if (!/^[0-9]{10}$/.test(phone)) {
   window.aimeasyListCurriculums = listCurriculums;
   window.aimeasyListCurriculumContent = listCurriculumContent;
   window.aimeasySaveCurriculumContent = saveCurriculumContent;
-  window.aimeasyUpdateCurriculumStatus = updateCurriculumStatus;
+  window.aimeasyUpdateCurriculumStatus = updateStatus;
   window.aimeasyFetchWorkflowDashboardCounts = fetchWorkflowDashboardCounts;
 
   window.renderSubAdminDashboardLive = async function renderSubAdminDashboardLiveDb() {
@@ -1077,6 +1077,10 @@ if (!/^[0-9]{10}$/.test(phone)) {
     window.setTimeout(async () => {
       await window.syncSessionFromSupabase?.({ reason: 'app-boot' });
     }, 0);
+  } else {
+    window.addEventListener('__aimeasy_supabase_ready__', async () => {
+        await window.syncSessionFromSupabase?.({ reason: 'app-boot' });
+    }, { once: true });
   }
 
   // Auth state listener → student router only

@@ -1,4 +1,5 @@
 // Common legacy helpers used across modules
+import { DEFAULT_SUBJECTS } from '../utils/constants.js';
 const esc = (value) => String(value ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
 const js = (value) => String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 const sb = () => window.__AIMEASY_SUPABASE__;

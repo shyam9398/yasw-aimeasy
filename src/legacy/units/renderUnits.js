@@ -6,7 +6,10 @@ const todayKeyDb = (date = new Date()) => date.toISOString().slice(0, 10);
 const pctFromCgpa = (cgpa) => Math.max(0, Math.min(100, Number(cgpa || 0) * 9.5));
 
 export async function renderUnits(subj) {
-  const grid = document.getElementById('units-grid');
+  const grid =
+    document.getElementById('page-units-grid') ||
+    document.getElementById('units-grid');
+  console.log('[renderUnits] grid found', !!grid);
   if (!grid) return;
   grid.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--text3);"><div style="font-size:3rem;margin-bottom:1rem;">⏳</div><div style="font-weight:700;font-size:1rem;">Loading units...</div></div>';
 
