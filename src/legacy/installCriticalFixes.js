@@ -968,7 +968,7 @@ if (!/^[0-9]{10}$/.test(phone)) {
   window.aimeasyListCurriculums = listCurriculums;
   window.aimeasyListCurriculumContent = listCurriculumContent;
   window.aimeasySaveCurriculumContent = saveCurriculumContent;
-  window.aimeasyUpdateCurriculumStatus = updateStatus;
+  window.aimeasyUpdateCurriculumStatus = updateCurriculumStatus;
   window.aimeasyFetchWorkflowDashboardCounts = fetchWorkflowDashboardCounts;
 
   window.renderSubAdminDashboardLive = async function renderSubAdminDashboardLiveDb() {
