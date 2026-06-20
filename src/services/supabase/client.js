@@ -1,5 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
+console.log('CLIENT JS LOADED');
+console.log('TIME', Date.now());
 
+localStorage.setItem('aimeasy_test', 'ok');
+
+console.log(
+  'AIMEASY TEST VALUE',
+  localStorage.getItem('aimeasy_test')
+);
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 console.log('[SUPABASE ENV]', {

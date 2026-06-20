@@ -16,9 +16,18 @@ export async function exchangeOAuthCodeOnce(code) {
     return window.__aimeasyOAuthCallbackPromise;
   }
   window.__aimeasyOAuthCallbackKey = key;
-  const result = supabase.auth.exchangeCodeForSession(code);
-  window.__aimeasyOAuthCallbackPromise = result;
-  return result;
+
+  console.log('=== EXCHANGE START ===');
+  console.log('CODE:', code);
+  const resultPromise = supabase.auth.exchangeCodeForSession(code);
+  
+  window.__aimeasyOAuthCallbackPromise = resultPromise.then(result => {
+    console.log('=== EXCHANGE RESULT ===');
+    console.log(result);
+    return result;
+  });
+
+  return window.__aimeasyOAuthCallbackPromise;
 }
 
 /**
@@ -79,7 +88,7 @@ export async function signInWithGoogle(role) {
                 access_type: 'offline',
                 prompt: 'consent',
             },
-            redirectTo: window.location.origin,
+            redirectTo: 'http://127.0.0.1:5173',
         },
     });
 

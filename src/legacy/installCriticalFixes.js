@@ -175,6 +175,8 @@ export function installCriticalFixes() {
   }
 
   async function completeOAuthCallback() {
+    console.log('COMPLETE OAUTH CALLBACK CALLED');
+    console.log(window.location.href);
     console.log('STEP 4 completeOAuthCallback');
     const supabase = window.__AIMEASY_SUPABASE__;
     if (!supabase) return;
