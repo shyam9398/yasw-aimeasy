@@ -1,0 +1,9 @@
+
+> aiiens-edu-react@0.1.0 dev
+> node ./node_modules/vite/bin/vite.js --host 127.0.0.1
+
+
+  VITE v5.4.19  ready in 211 ms
+
+  ➜  Local:   http://127.0.0.1:5173/
+  ➜  press h + enter to show help

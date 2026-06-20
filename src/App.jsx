@@ -1,3 +1,4 @@
+console.log('STEP 3 App.jsx');
 import React from 'react';
 import { Analytics } from '@vercel/analytics/react';
 import { AuthProvider } from './services/auth/AuthProvider.jsx';

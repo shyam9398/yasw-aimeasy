@@ -10,6 +10,7 @@ let sessionCache = null;
  * @returns {Promise<any>}
  */
 export async function exchangeOAuthCodeOnce(code) {
+  console.log('STEP 5 exchangeCodeForSession');
   const key = `pkce:${code}`;
   if (window.__aimeasyOAuthCallbackKey === key) {
     return window.__aimeasyOAuthCallbackPromise;

@@ -1,3 +1,4 @@
+console.log('STEP 2 installCriticalFixes');
 import { hydrateProfileAcademicDropdowns } from '../services/academic/academicCatalog.js';
 import { fetchAdminDashboardStats, fetchLandingStats } from '../services/admin/adminStatsService.js';
 import { authLog, AUTH_STAGES } from '../services/auth/authLogger.js';
@@ -174,6 +175,7 @@ export function installCriticalFixes() {
   }
 
   async function completeOAuthCallback() {
+    console.log('STEP 4 completeOAuthCallback');
     const supabase = window.__AIMEASY_SUPABASE__;
     if (!supabase) return;
 
@@ -211,6 +213,7 @@ export function installCriticalFixes() {
 
   // ─── Issue 1 & 2: Central Supabase post-auth (student Google only) ───
   window.syncSessionFromSupabase = async function syncSessionFromSupabaseFixed({ reason } = {}) {
+    console.log('STEP 6 syncSessionFromSupabase');
     if (window.__aimeasyAuthSyncInFlight) return window.__aimeasyAuthSyncInFlight;
 
     if (!window.__AIMEASY_SUPABASE__) {
