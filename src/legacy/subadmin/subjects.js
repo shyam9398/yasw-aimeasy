@@ -112,12 +112,22 @@ export function saCreateSubject() {
   subjects.push({ branch, year, sem, reg, uni, name, code, credits, id: Date.now() });
   localStorage.setItem('edusync_custom_subjects', JSON.stringify(subjects));
   showToast('✅ Subject created and live for students!', 'green');
-  switchSASection('subjects');
+  // Refresh the subjects list in place instead of switching sections
+  if (window.v10SASubjects) {
+    window.v10SASubjects?.();
+  } else {
+    switchSASection('subjects');
+  }
 }
 
 export function saDeleteSubject(id) {
   const subjects = JSON.parse(localStorage.getItem('edusync_custom_subjects') || '[]');
   localStorage.setItem('edusync_custom_subjects', JSON.stringify(subjects.filter(s => s.id !== id)));
   showToast('Subject deleted', 'red');
-  switchSASection('subjects');
+  // Refresh the subjects list in place instead of switching sections
+  if (window.v10SASubjects) {
+    window.v10SASubjects?.();
+  } else {
+    switchSASection('subjects');
+  }
 }
